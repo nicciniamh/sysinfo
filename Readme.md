@@ -7,9 +7,9 @@ I wanted an alternative for the *nix df command which would show diskusage using
 ### Program Arguments
 |Argument|Usage|
 |--------|-----|
-|--system|	true or false to show or hide system information
-|--filesystems|true or false to show filesystem usage
-|--termwidth|an integer representing terminal width. This prevents using an ioctl to determine the terminal width. Usefull for scripts.
+|--nosystem|	Don't show system information
+|--nofilesystems|Don't show filesystem usage
+|--termwidth|An integer representing terminal width. This prevents using an ioctl to determine the terminal width. Usefull for scripts.
 |--watch|Clear screen and refresh every watch-interval seconds. Default is 1 second. Can be a fractional second.
 |--watch-interval|Seconds to wait between refresh
 
