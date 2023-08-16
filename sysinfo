@@ -1,0 +1,267 @@
+#!/usr/bin/env python3
+'''
+System Information - 
+show bar graphs in ascii for CPU, RAM and each file system with a /dev 
+device associated or for a list of paths. 
+
+if sysinfo is run as 'diskbar' then only diskinformation is shown
+
+
+Copyright (c) 2023 Nicole Stevens
+
+'''
+import os
+import psutil
+import sys
+import argparse
+import time 
+import datetime
+import psutil
+from datetime import timedelta
+
+
+def getCpuTemp():
+	'''
+	Use sysfs to get CPU temp. If not available return empty string
+	'''
+	try:
+		if os.path.exists('/sys/class/thermal/thermal_zone0/temp'):
+			with open('/sys/class/thermal/thermal_zone0/temp') as f:
+				t=float(f.read().strip())
+				t = t / 1000;
+				return 'Temp {:.2f}\xb0C'.format(t)
+	except:
+		pass
+	return ""
+
+def get_system_uptime():
+    '''
+    Return a string with human-readable uptime as up <n> days, hh:mm:ss or hh:mm:ss if
+    days is zero
+    '''
+    boot_time = psutil.boot_time()
+    current_time = psutil.time.time()
+    uptime_seconds = current_time - boot_time
+    uptime_timedelta = timedelta(seconds=uptime_seconds)
+    return uptime_timedelta
+
+def format_uptime(uptime):
+    "Take the uptime and turn it into days, hours, mins, seconds"
+    days = uptime.days
+    hours, remainder = divmod(uptime.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return days, hours, minutes, seconds
+
+def getUptime():
+	'''
+	Get system uptime from procps
+	'''
+	uptime_timedelta = get_system_uptime()
+	days, hours, minutes, seconds = format_uptime(uptime_timedelta)
+	hours = f'{hours}'.rjust(2,'0')
+	minutes = f'{minutes}'.rjust(2,'0')
+	seconds = f'{seconds}'.rjust(2,'0')
+	if(days > 0):
+		return f"{days} days, {hours}:{minutes}:{seconds}"
+	else:
+		return f"{hours}:{minutes}:{seconds}"
+
+def formatByteValue(bytes):
+	'''
+	Format bytes to bytes[G|M|k|b]
+	'''
+	tb=1024**4
+	gig = 1024**3
+	meg = 1024**2
+	if(bytes >= tb):
+		return '{:.1f}T'.format(bytes/tb)
+	if(bytes >= gig):
+		return '{:.1f}G'.format(bytes/gig)
+	if(bytes >= meg):
+		return '{:.1f}M'.format(bytes/meg)
+	if(bytes >= 1024):
+		return '{:.1f}k'.format(bytes/1024)
+	return f'{bytes}b'
+
+def find_sdiskpart(path):
+	'''
+	get a partition object for a path
+	'''
+	path = os.path.abspath(path)
+	while not os.path.ismount(path):
+		path = os.path.dirname(path)
+	p = [p for p in psutil.disk_partitions(all=True) if p.mountpoint == path.__str__()]
+	l = len(p)
+	if len(p) == 1:
+		return p[0]
+	raise False
+
+def listTosdiskparts(plist):
+	'''
+	convert a list of paths to a list of disparts
+	'''
+	mounts = []
+	parts = []
+	for p in plist:
+		if not os.path.exists(p):
+			raise Exception(f'{p} does not exist');
+		mp = find_sdiskpart(p)
+		if mp:
+			if not mp in mounts:
+				mounts.append(p)
+				parts.append(mp)
+		else:
+			raise Exception(f'Cannot find mount point for {p}')
+	return parts
+
+def get_mounted_filesystems(parry=None):
+	'''
+	return a list of mounted file systems either from procps or derived 
+	from listTodiskparts
+	'''
+	mounted_filesystems = []
+	if parry:
+		partitions = listTosdiskparts(parry)
+	else:
+		partitions = psutil.disk_partitions(all=True)
+	
+	for partition in partitions:
+		usage = psutil.disk_usage(partition.mountpoint)
+		try:
+			if not parry and '/home' in partition.mountpoint:
+				continue
+			filesystem_info = {
+				'mountpoint': partition.mountpoint,
+				'device': partition.device,
+				'usage_percent': usage.percent,
+				'total': formatByteValue(usage.total),
+				'used': formatByteValue(usage.used),
+			}
+			mounted_filesystems.append(filesystem_info)
+		except:
+			pass
+	
+	return mounted_filesystems
+
+def generate_bar_graph(percentage, width=20):
+	'''
+	generate a bar graph for a percentage width wide 
+	'''
+	filled_blocks = int((percentage / 100) * width)
+	empty_blocks = width - filled_blocks
+
+	bar = '[' + '#' * filled_blocks + ' ' * empty_blocks + ']'
+	return bar
+
+def str2bool(v):
+	'''
+	convert a string to a boolean unless v is a boolean
+	'''
+	if isinstance(v, bool):
+		return v
+	if v.lower() in ('yes', 'true', 't', 'y', '1'):
+		return True
+	elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+		return False
+	else:
+		raise argparse.ArgumentTypeError('Boolean value expected.')
+
+sysdflt = True
+diskdflt = True
+if os.path.basename(sys.argv[0]) == 'diskbar':
+	sysdflt = False
+	diskdflt = True
+	progDsc = 'Diskbar: show diskusage with bar graphs for devices in /dev';
+else:
+	sysdflt = True
+	sysdflt = True
+	progDsc = 'Sysinfo: show system Information and disk usage.'
+progEpi = '''
+    Sysinfo  Copyright (C) 2023 Nicole Stevens.
+    This program comes with ABSOLUTELY NO WARRANTY.
+    This is free software, and you are welcome to redistribute it
+    under certain conditions. 
+    This program is licenced under GNU GENERAL PUBLIC LICENSE Version 3.
+    See LICENSE.txt which should have been distributed with this program.
+'''
+parser = argparse.ArgumentParser(description=progDsc,epilog=progEpi)
+parser.add_argument('--system',action="store_true", default=sysdflt,help='Show system information')
+parser.add_argument('--filesystems',action="store_true", default=diskdflt, help="Show disk usage")
+parser.add_argument('--termwidth',type=int, default=-1, metavar="number",help="set terminal size and override terminal check")
+parser.add_argument('--watch',action='store_true',default=False,help='warchmode')
+parser.add_argument('--watch-interval',type=float,default=1,metavar="seconds",help="Set watch interval, default is 1")
+parser.add_argument('paths', nargs='*', help='Optional list of paths to check.')
+args = parser.parse_args()
+try:
+	termwidth = os.get_terminal_size().columns
+except:
+	termwidth = 70
+if args.termwidth != -1:
+	termwidth = args.termwidth
+
+try:
+	if len(args.paths):
+		mounted_filesystems = get_mounted_filesystems(args.paths)
+	else:
+		mounted_filesystems = get_mounted_filesystems()
+except Exception as e:
+	print(f'Error getting filesystems: {e}',file=sys.stderr)
+	sys.exit(1)
+
+info = []
+mplen = 0
+dvlen = 0
+tlen = 0 
+ulen = 0
+run=True
+for fs in mounted_filesystems:
+	if fs['device'].startswith('/dev'):
+		mplen = max(mplen,len(fs['mountpoint']))
+		dvlen = max(dvlen,len(fs['device']))
+		tlen = max(tlen,len(fs['total']))
+		ulen = max(tlen,len(fs['used']))
+		info.append(fs)
+
+barlen = termwidth - (10+mplen+dvlen+4+tlen+ulen)
+
+while run:
+	if args.watch:
+		print("\033[H\033[J", end="")
+	vm = psutil.virtual_memory()
+	uptime = getUptime()
+	vmtot = formatByteValue(vm.total)
+	vmav = formatByteValue(vm.available)
+	vmper = vm.percent
+
+	cperc = psutil.cpu_percent()
+	cpubar = generate_bar_graph(cperc,barlen)
+	vmbar = generate_bar_graph(vm.percent,barlen)
+	vmusg = f'{vmav}/{vmtot}'
+	if args.system:
+		timestr = time.strftime('%c')
+		loadavg = []
+		for l in psutil.getloadavg():
+			loadavg.append('{:.2f}'.format(float(l)))
+		jlen = mplen+dvlen+1
+		print("System Information")
+		print(f'{timestr}  Up: {uptime} - Load Average ',*loadavg,getCpuTemp())
+		print('CPU'.ljust(jlen),f'{cpubar} {cperc}%')
+		print('RAM'.ljust(jlen),f'{vmbar} {vm.percent}%, {vmusg}')
+
+	if args.filesystems:
+		print("File systems")
+		print(f"{'Mount'.ljust(mplen)} {'Dev'.ljust(dvlen)}  Usage");
+		for fs in info:
+			p = fs['usage_percent']
+			mp = fs["mountpoint"].ljust(mplen)
+			dev = fs["device"].ljust(dvlen)
+			#barlen = os.get_terminal_size().columns  - (10+mplen+dvlen+4+tlen+ulen)
+			if(barlen < 10):
+				print('Screen too small',file=sys.stderr)
+				sys.exit(1)
+			bar = generate_bar_graph(p,barlen)
+			print(f"{mp} {dev} {bar} {p}% {fs['used']}/{fs['total']}")
+	if not args.watch:
+		run = False
+	else:
+		time.sleep(args.watch_interval)
