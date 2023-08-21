@@ -63,16 +63,16 @@ def GTKStuff(args):
 					bar = Gtk.ProgressBar()
 					self.cpuwidgets.append({'percent': perc, 'bar': bar})
 					self.grid.attach(lcpu,0,gline,1,1)
-					self.grid.attach(bar,3,gline,1,1)
-					self.grid.attach(perc,4,gline,1,1)
+					self.grid.attach(bar,1,gline,1,1)
+					self.grid.attach(perc,3,gline,1,1)
 					gline = gline + 1
 				
 				lram = createLabel('RAM')
 				self.ramBar = Gtk.ProgressBar()
 				self.ramPercent = createLabel()
 				self.grid.attach(lram,0,gline,1,1)
-				self.grid.attach(self.ramBar,3,gline,1,1)
-				self.grid.attach(self.ramPercent,4,gline,1,1)
+				self.grid.attach(self.ramBar,1,gline,1,1)
+				self.grid.attach(self.ramPercent,3,gline,1,1)
 				gline = gline + 2
 				sep = Gtk.Label()
 				sep.set_size_request(-1, 20)
@@ -106,10 +106,12 @@ def GTKStuff(args):
 					gline = gline + 1
 
 			self.vbox.pack_start(self.grid,True,True,0)
+			usrgrid = Gtk.Grid()
 			if not self.nousers:
 				self.Users = Gtk.Label()
-				self.grid.attach(self.Users,0,gline,1,4)
+				usrgrid.attach(self.Users,0,gline,1,1)
 				self.Users.set_text(getLoggedInUsers())
+			self.vbox.pack_start(usrgrid,True,True,0)
 			self.add(self.vbox)
 
 			self.update()
