@@ -1,7 +1,8 @@
 % sysinfo(1) | General Commands Manual
 
 # System Information
-The sysinfo program displays cpu, ram and diskusage as well as uptime, loadaverage and cpu temperature on sysfs systems which support it. Display may be on a terminal or in a GTK application.
+The sysinfo program displays cpu, ram and diskusage as well as uptime, load average and cpu temperature on sysfs systems which support it. Display may be on a terminal or in a GTK application. 
+CPU percentages are graphed, per core. 
 
 ### Compatibility
 sysinfo has been tested on macOS Catalina and macOS Ventura, Debian Bullseye and Ubuntu Server. GTK may not be available on Macintosh Systems. 

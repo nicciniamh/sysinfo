@@ -50,19 +50,23 @@ def GTKStuff(args):
 			self.grid = Gtk.Grid()
 			self.vbox.pack_start(self.grid,True,True,0)
 			gline = 0
+			self.cpuwidgets = []
 			if not self.nosystem:
 				count = psutil.cpu_count()
 				if count > 1:
 					nr = 'cores'
 				else:
 					nr = 'core'
-				lcpu = createLabel(f"CPU ({count} {nr})")
-				self.cpuBar = Gtk.ProgressBar()
-				self.cpuPercent = createLabel()
-				self.grid.attach(lcpu,0,gline,1,1)
-				self.grid.attach(self.cpuBar,3,gline,1,1)
-				self.grid.attach(self.cpuPercent,4,gline,1,1)
-				gline = gline + 1
+				for i in range(0,count):
+					lcpu = createLabel(f"CPU Core {i} ")
+					perc = createLabel()
+					bar = Gtk.ProgressBar()
+					self.cpuwidgets.append({'percent': perc, 'bar': bar})
+					self.grid.attach(lcpu,0,gline,1,1)
+					self.grid.attach(bar,3,gline,1,1)
+					self.grid.attach(perc,4,gline,1,1)
+					gline = gline + 1
+				
 				lram = createLabel('RAM')
 				self.ramBar = Gtk.ProgressBar()
 				self.ramPercent = createLabel()
@@ -140,16 +144,18 @@ def GTKStuff(args):
 			topline = f'{dinfo}\n{timestr}  Up: {uptime} - Load Average {loadavg} {getCpuTemp()}\n{pstr}'
 			self.topLabel.set_text(topline)
 			if not self.nosystem:
-				cper = psutil.cpu_percent()
-				if cper <= 0:
-					cfrac = 0
-				else:
-					cfrac = cper/100
-				if cfrac > 100:
-					return True
-				cper = '{:.2f}'.format(cper)
-				self.cpuPercent.set_text(f'{cper}%')
-				self.cpuBar.set_fraction(cfrac)
+				p = psutil.cpu_percent(percpu=True)
+				for i in range(0,len(p)):
+					cper = p[i]
+					if cper <= 0:
+						cfrac = 0
+					else:
+						cfrac = cper/100
+					if cfrac > 100:
+						return True
+					cper = '{:.2f}'.format(cper)
+					self.cpuwidgets[i]['percent'].set_text(f'{cper}%')
+					self.cpuwidgets[i]['bar'].set_fraction(cfrac)
 
 				vm = psutil.virtual_memory()
 				vmtot = formatByteValue(vm.total)
@@ -450,7 +456,6 @@ def ttyMain(args):
 		vmper = vm.percent
 
 		cperc = psutil.cpu_percent()
-		cpubar = generate_bar_graph(cperc,barlen)
 		vmbar = generate_bar_graph(vm.percent,barlen)
 		vmusg = f'{vmav}/{vmtot}'
 		if not args.nosystem:
@@ -461,7 +466,11 @@ def ttyMain(args):
 			jlen = mplen+dvlen+1
 			print(title)
 			print(f'{timestr}  Up: {uptime} - Load Average ',*loadavg,getCpuTemp())
-			print('CPU'.ljust(jlen),f'{cpubar} {cperc}%')
+			p = psutil.cpu_percent(percpu=True)
+			for i in range(0,psutil.cpu_count()):
+				cperc = p[i]
+				cpubar = generate_bar_graph(cperc,barlen)
+				print(f'Core {i}'.ljust(jlen),f'{cpubar} {cperc}%')
 			print('RAM'.ljust(jlen),f'{vmbar} {vm.percent}%, {vmusg}')
 			print("");
 
