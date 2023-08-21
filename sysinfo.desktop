@@ -1,0 +1,11 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Name=CPU and Disk Information (Terminal)
+GenericName=sysinfo
+Comment=System Information
+Exec=$BINPATH/bin/sysinfo -w
+Icon=utilities-system-monitor.png
+Terminal=true
+Type=Application
+StartupNotify=true
+Categories=System;Monitor

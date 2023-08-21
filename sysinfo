@@ -4,9 +4,6 @@ System Information -
 show bar graphs in ascii for CPU, RAM and each file system with a /dev 
 device associated or for a list of paths. 
 
-if sysinfo is run as 'diskbar' then only diskinformation is shown
-
-
 Copyright (c) 2023 Nicole Stevens
 
 '''
@@ -18,6 +15,190 @@ import time
 import datetime
 import psutil
 from datetime import timedelta
+try:
+	import distro
+	distroAvail = True
+except:
+	distroAvail = False
+
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk, GLib, GObject
+
+
+class siGtk(Gtk.Window):
+	def __init__(self,interval,nosystem,nofilesystems,nousers):
+		self.interval = interval
+		self.nosystem = nosystem
+		self.nofilesystems = nofilesystems
+		self.nousers = nousers
+		self.username = os.getlogin()
+		def createLabel(label=""):
+			label = Gtk.Label(label=label)
+			label.set_justify(Gtk.Justification.LEFT)
+			label.set_margin_start(20)
+			label.set_margin_end(20)
+			label.set_halign(Gtk.Align.START)
+			return label
+
+		super().__init__(title="System Information")
+		self.vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+		self.topLabel = createLabel()
+		self.vbox.pack_start(self.topLabel,True,True,0)
+		self.grid = Gtk.Grid()
+		self.vbox.pack_start(self.grid,True,True,0)
+		gline = 0
+		if not self.nosystem:
+			count = psutil.cpu_count()
+			if count > 1:
+				nr = 'cores'
+			else:
+				nr = 'core'
+			lcpu = createLabel(f"CPU ({count} {nr})")
+			self.cpuBar = Gtk.ProgressBar()
+			self.cpuPercent = createLabel()
+			self.grid.attach(lcpu,0,gline,1,1)
+			self.grid.attach(self.cpuBar,3,gline,1,1)
+			self.grid.attach(self.cpuPercent,4,gline,1,1)
+			gline = gline + 1
+			lram = createLabel('RAM')
+			self.ramBar = Gtk.ProgressBar()
+			self.ramPercent = createLabel()
+			self.grid.attach(lram,0,gline,1,1)
+			self.grid.attach(self.ramBar,3,gline,1,1)
+			self.grid.attach(self.ramPercent,4,gline,1,1)
+			gline = gline + 2
+			sep = Gtk.Label()
+			sep.set_size_request(-1, 20)
+			self.grid.attach(sep,0,gline,5,1)
+			gline = gline + 2
+		else:
+			gline = gline + 1
+		if not self.nofilesystems:
+			self.parts = {}
+			self.grid.attach(createLabel('Mount'),0,gline,1,1)
+			self.grid.attach(createLabel("Device"),1,gline,1,1)
+			self.grid.attach(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL),0,gline,5,1)
+			gline = gline + 1
+			for i in getPartitionInfo():
+				fso = {
+					'mountpoint': 	i['mountpoint'],
+					'device': 	i['device'],
+					'percent': 	i['usage_percent'],
+					'total':	i['total'],
+					'used':		i['used'],
+					'bar':	Gtk.ProgressBar(),
+					'usage': createLabel(f" {i['usage_percent']}%, {i['used']}/{i['total']}")
+				};
+				l1 = createLabel(i['mountpoint'])
+				l2 = createLabel(i['device'])
+				self.grid.attach(l1,0,gline,1,1)
+				self.grid.attach(l2,1,gline,2,1)
+				self.grid.attach(fso['bar'],3,gline,1,1)
+				self.grid.attach(fso['usage'],4,gline,1,1)
+				self.parts[i['mountpoint']] = fso;
+				gline = gline + 1
+
+		self.vbox.pack_start(self.grid,True,True,0)
+		if not self.nousers:
+			self.Users = Gtk.Label()
+			self.vbox.pack_start(self.Users,True,True,0)
+			self.Users.set_text(getLoggedInUsers())
+		self.add(self.vbox)
+
+		self.update()
+		GLib.timeout_add(self.interval, self.update)
+
+
+	def update(self):
+		if distroAvail:
+			dos = distro.id()
+			codename = distro.codename()
+			version = distro.major_version()
+			minor = distro.minor_version()
+			if minor:
+				version = f'{version}.{minor}'
+
+			uname = os.uname()
+			system = f'{uname[0]} {uname[2]}'
+			dinfo = f'{system} {dos} {codename} {version}'
+		else:
+			dinfo = ""
+		uptime = getUptime()
+		timestr = time.strftime('%c')
+		loadavg = []
+		for l in psutil.getloadavg():
+			loadavg.append('{:.2f}'.format(float(l)))
+		loadavg = ', '.join(loadavg)
+		pinfo = getProcessInformation(self.username)
+		usrcnt = int(pinfo['user'])
+		sleep = pinfo['sleeping']
+		run = pinfo['running']
+		pstr = f'{pinfo["count"]} procs, ({run} running, {sleep} sleeping) {pinfo["sys"]} system, {usrcnt} user'
+		topline = f'{dinfo}\n{timestr}  Up: {uptime} - Load Average {loadavg} {getCpuTemp()}\n{pstr}'
+		self.topLabel.set_text(topline)
+		if not self.nosystem:
+			cper = psutil.cpu_percent()
+			if cper <= 0:
+				cfrac = 0
+			else:
+				cfrac = cper/100
+			if cfrac > 100:
+				return True
+			cper = '{:.2f}'.format(cper)
+			self.cpuPercent.set_text(f'{cper}%')
+			self.cpuBar.set_fraction(cfrac)
+
+			vm = psutil.virtual_memory()
+			vmtot = formatByteValue(vm.total)
+			vmav = formatByteValue(vm.available)
+			vperstr = '{:.2f}'.format(vm.percent)
+			vmper = vm.percent/100
+			vmusg = f'{vmav}/{vmtot}'
+			self.ramPercent.set_text(f'{vperstr}%, {vmusg}')
+			self.ramBar.set_fraction(vmper)
+
+		if not self.nofilesystems:
+			for i in getPartitionInfo():
+				if i['mountpoint'] in self.parts:
+					fso = self.parts[i['mountpoint']]
+					fso['usage'].set_text(f" {i['usage_percent']}%, {i['used']}/{i['total']}")
+					fso['bar'].set_fraction(i['usage_percent']/100)
+
+		if not self.nousers:
+			self.Users.set_text(getLoggedInUsers())
+
+		return True
+
+def getPartitionInfo():
+	mounted_filesystems = get_mounted_filesystems()
+	parts = []
+	for fs in mounted_filesystems:
+		if fs['device'].startswith('/dev'):
+			parts.append(fs)
+	return parts
+
+
+def getLoggedInUsers():
+	users = psutil.users();
+	legends = [
+		'USER'.ljust(20),
+		'TTY'.ljust(10),
+		'HOST'.ljust(50)
+	]
+	usrstrs = [
+		f'{len(users)} users logged in',
+		' '.join(legends)
+	]
+	for u in psutil.users():
+		usts = [
+			u.name.ljust(20),
+			u.terminal.ljust(10),
+			u.host.ljust(50),
+		]
+		usrstrs.append(' '.join(usts))
+
+	return '\n'.join(usrstrs)
 
 def getCpuTemp():
 	'''
@@ -34,22 +215,22 @@ def getCpuTemp():
 	return ""
 
 def get_system_uptime():
-    '''
-    Return a string with human-readable uptime as up <n> days, hh:mm:ss or hh:mm:ss if
-    days is zero
-    '''
-    boot_time = psutil.boot_time()
-    current_time = psutil.time.time()
-    uptime_seconds = current_time - boot_time
-    uptime_timedelta = timedelta(seconds=uptime_seconds)
-    return uptime_timedelta
+	'''
+	Return a string with human-readable uptime as up <n> days, hh:mm:ss or hh:mm:ss if
+	days is zero
+	'''
+	boot_time = psutil.boot_time()
+	current_time = psutil.time.time()
+	uptime_seconds = current_time - boot_time
+	uptime_timedelta = datetime.timedelta(seconds=uptime_seconds)
+	return uptime_timedelta
 
 def format_uptime(uptime):
-    "Take the uptime and turn it into days, hours, mins, seconds"
-    days = uptime.days
-    hours, remainder = divmod(uptime.seconds, 3600)
-    minutes, seconds = divmod(remainder, 60)
-    return days, hours, minutes, seconds
+	"Take the uptime and turn it into days, hours, mins, seconds"
+	days = uptime.days
+	hours, remainder = divmod(uptime.seconds, 3600)
+	minutes, seconds = divmod(remainder, 60)
+	return days, hours, minutes, seconds
 
 def getUptime():
 	'''
@@ -125,7 +306,10 @@ def get_mounted_filesystems(parry=None):
 		partitions = psutil.disk_partitions(all=True)
 	
 	for partition in partitions:
-		usage = psutil.disk_usage(partition.mountpoint)
+		try:
+			usage = psutil.disk_usage(partition.mountpoint)
+		except:
+			continue;
 		try:
 			if not parry and '/home' in partition.mountpoint:
 				continue
@@ -142,6 +326,49 @@ def get_mounted_filesystems(parry=None):
 	
 	return mounted_filesystems
 
+def getProcessInformation(username):
+	'''
+	Return process information. 
+	'''
+	procs = {p.pid: p.info for p in psutil.process_iter(['name', 'username', 'status'])}
+	total = len(procs)
+	user = 0
+	sys = 0
+	run = 0
+	sleep = 0
+	for k,p in procs.items():
+		if p["username"] == 'root':
+			sys = sys+1
+		else:
+			user = user + 1
+		if p['status'] == 'sleeping':
+			sleep = sleep + 1
+		else:
+			run = run + 1
+	return {'count': total, 'user': user, 'sys': sys, 'running': run, 'sleeping': sleep}
+
+
+
+progDsc = 'Sysinfo: show system Information and disk usage.'
+progEpi = '''
+Sysinfo  Copyright (C) 2023 Nicole Stevens.
+This program comes with ABSOLUTELY NO WARRANTY.
+This is free software, and you are welcome to redistribute it
+under certain conditions. 
+This program is licenced under GNU GENERAL PUBLIC LICENSE Version 3.
+See LICENSE.txt which should have been distributed with this program.
+'''
+
+
+rundir=os.path.dirname(os.path.realpath(sys.argv[0]))
+try:
+	os.chdir(rundir)
+except Exception as e:
+	print(f'Cannot change to {rundir}: {e}')
+	sys.exit(1)
+
+sys.path.append('.')
+
 def generate_bar_graph(percentage, width=20):
 	'''
 	generate a bar graph for a percentage width wide 
@@ -152,38 +379,25 @@ def generate_bar_graph(percentage, width=20):
 	bar = '[' + '#' * filled_blocks + ' ' * empty_blocks + ']'
 	return bar
 
-def str2bool(v):
-	'''
-	convert a string to a boolean unless v is a boolean
-	'''
-	if isinstance(v, bool):
-		return v
-	if v.lower() in ('yes', 'true', 't', 'y', '1'):
-		return True
-	elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-		return False
-	else:
-		raise argparse.ArgumentTypeError('Boolean value expected.')
+def gtkMain(args):
+	if args.interval <= .15:
+		istr = '{:.2f}'.format(args.interval)
+		dialog = Gtk.MessageDialog(
+			flags=0,
+			message_type=Gtk.MessageType.ERROR,
+			buttons=Gtk.ButtonsType.CLOSE,
+			text=f"The interval, {istr}, requested is to low, please use >.15",
+		)
+		dialog.run()
+		sys.exit(1)
+	win = siGtk(args.interval*1000,args.nosystem,args.nofilesystems,args.nousers)
+	win.connect("destroy", Gtk.main_quit)
+	win.show_all()
+	Gtk.main()
 
-def main():
-	progDsc = 'Sysinfo: show system Information and disk usage.'
-	progEpi = '''
-	    Sysinfo  Copyright (C) 2023 Nicole Stevens.
-	    This program comes with ABSOLUTELY NO WARRANTY.
-	    This is free software, and you are welcome to redistribute it
-	    under certain conditions. 
-	    This program is licenced under GNU GENERAL PUBLIC LICENSE Version 3.
-	    See LICENSE.txt which should have been distributed with this program.
-	'''
-	parser = argparse.ArgumentParser(description=progDsc,epilog=progEpi)
-	parser.add_argument('--nosystem',action="store_true", default=False,help='Don\'t show system information')
-	parser.add_argument('--nofilesystems',action="store_true", default=False, help="Don\'t show disk usage")
-	parser.add_argument('--termwidth',type=int, default=-1, metavar="number",help="set terminal size and override terminal check")
-	parser.add_argument('-w','--watch',action='store_true',default=False,help='Watch mode')
-	parser.add_argument('-i','--watch-interval',type=float,default=1,metavar="seconds",help="Set watch interval, default is 1")
-	parser.add_argument('paths', nargs='*', help='Optional list of paths to check.')
-	args = parser.parse_args()
-	#print(args)
+def ttyMain(args):
+	hostname = os.uname()[1]
+	title = f"System Information - {hostname}"
 	try:
 		termwidth = os.get_terminal_size().columns
 	except:
@@ -219,6 +433,7 @@ def main():
 	while run:
 		if args.watch:
 			print("\033[H\033[J", end="")		
+			print(f"\033]0;{title}\007",end="")
 
 		vm = psutil.virtual_memory()
 		uptime = getUptime()
@@ -236,28 +451,55 @@ def main():
 			for l in psutil.getloadavg():
 				loadavg.append('{:.2f}'.format(float(l)))
 			jlen = mplen+dvlen+1
-			print("System Information")
+			print(title)
 			print(f'{timestr}  Up: {uptime} - Load Average ',*loadavg,getCpuTemp())
 			print('CPU'.ljust(jlen),f'{cpubar} {cperc}%')
 			print('RAM'.ljust(jlen),f'{vmbar} {vm.percent}%, {vmusg}')
+			print("");
 
 		if not args.nofilesystems:
+			mpdash = '-'*mplen
+			devdash = '-'*dvlen
+			bardash = '-'*barlen
 			print("File systems")
 			print(f"{'Mount'.ljust(mplen)} {'Dev'.ljust(dvlen)}  Usage");
+			print(f'{mpdash} {devdash} {bardash}')
 			for fs in info:
 				p = fs['usage_percent']
 				mp = fs["mountpoint"].ljust(mplen)
 				dev = fs["device"].ljust(dvlen)
-				#barlen = os.get_terminal_size().columns  - (10+mplen+dvlen+4+tlen+ulen)
 				if(barlen < 10):
 					print('Screen too small',file=sys.stderr)
 					sys.exit(1)
 				bar = generate_bar_graph(p,barlen)
 				print(f"{mp} {dev} {bar} {p}% {fs['used']}/{fs['total']}")
+			print("");
+
+
+		if not args.nousers:
+			print(getLoggedInUsers())
+			print("");
+
 		if not args.watch:
 			run = False
 		else:
-			time.sleep(args.watch_interval)
+			time.sleep(args.interval)
+
+def main():
+	parser = argparse.ArgumentParser(description=progDsc,epilog=progEpi)
+	parser.add_argument('--gtk',action='store_true', default=False, help='Use GTK interface')
+	parser.add_argument('--nosystem',action="store_true", default=False,help='Don\'t show system information')
+	parser.add_argument('--nofilesystems',action="store_true", default=False, help="Don\'t show disk usage")
+	parser.add_argument('--nousers',action="store_true", default=False, help="Don\'t show logged in users")
+	parser.add_argument('--termwidth',type=int, default=-1, metavar="number",help="set terminal size and override terminal check")
+	parser.add_argument('-w','--watch',action='store_true',default=False,help='Watch mode')
+	parser.add_argument('-i','--interval',type=float,default=1,metavar="seconds",help="Set watch interval, default is 1")
+	parser.add_argument('paths', nargs='*', help='Optional list of paths to check.')
+	args = parser.parse_args()
+	if args.gtk:
+		gtkMain(args)
+	else:
+		ttyMain(args)
 
 if __name__ == "__main__":
 	main()
