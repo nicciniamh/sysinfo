@@ -108,7 +108,7 @@ def GTKStuff(args):
 			self.vbox.pack_start(self.grid,True,True,0)
 			if not self.nousers:
 				self.Users = Gtk.Label()
-				self.vbox.pack_start(self.Users,True,True,0)
+				self.grid.attach(self.Users,0,gline,1,4)
 				self.Users.set_text(getLoggedInUsers())
 			self.add(self.vbox)
 
@@ -209,9 +209,9 @@ def getPartitionInfo():
 def getLoggedInUsers():
 	users = psutil.users();
 	legends = [
-		'USER'.ljust(20),
-		'TTY'.ljust(10),
-		'HOST'.ljust(50)
+		'   USER'.ljust(20),
+		'   TTY'.ljust(10),
+		'   HOST'.ljust(50)
 	]
 	usrstrs = [
 		f'{len(users)} users logged in',
@@ -219,7 +219,7 @@ def getLoggedInUsers():
 	]
 	for u in psutil.users():
 		usts = [
-			u.name.ljust(20),
+			'   '+u.name.ljust(20),
 			u.terminal.ljust(10),
 			u.host.ljust(50),
 		]
