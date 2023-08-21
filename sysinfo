@@ -21,154 +21,175 @@ try:
 except:
 	distroAvail = False
 
-import gi
-gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, GLib, GObject
+
+def GTKStuff(args):
+	import gi
+	gi.require_version("Gtk", "3.0")
+	from gi.repository import Gtk, GLib, GObject
 
 
-class siGtk(Gtk.Window):
-	def __init__(self,interval,nosystem,nofilesystems,nousers):
-		self.interval = interval
-		self.nosystem = nosystem
-		self.nofilesystems = nofilesystems
-		self.nousers = nousers
-		self.username = os.getlogin()
-		def createLabel(label=""):
-			label = Gtk.Label(label=label)
-			label.set_justify(Gtk.Justification.LEFT)
-			label.set_margin_start(20)
-			label.set_margin_end(20)
-			label.set_halign(Gtk.Align.START)
-			return label
+	class siGtk(Gtk.Window):
+		def __init__(self,interval,nosystem,nofilesystems,nousers):
+			self.interval = interval
+			self.nosystem = nosystem
+			self.nofilesystems = nofilesystems
+			self.nousers = nousers
+			self.username = os.getlogin()
+			def createLabel(label=""):
+				label = Gtk.Label(label=label)
+				label.set_justify(Gtk.Justification.LEFT)
+				label.set_margin_start(20)
+				label.set_margin_end(20)
+				label.set_halign(Gtk.Align.START)
+				return label
 
-		super().__init__(title="System Information")
-		self.vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
-		self.topLabel = createLabel()
-		self.vbox.pack_start(self.topLabel,True,True,0)
-		self.grid = Gtk.Grid()
-		self.vbox.pack_start(self.grid,True,True,0)
-		gline = 0
-		if not self.nosystem:
-			count = psutil.cpu_count()
-			if count > 1:
-				nr = 'cores'
-			else:
-				nr = 'core'
-			lcpu = createLabel(f"CPU ({count} {nr})")
-			self.cpuBar = Gtk.ProgressBar()
-			self.cpuPercent = createLabel()
-			self.grid.attach(lcpu,0,gline,1,1)
-			self.grid.attach(self.cpuBar,3,gline,1,1)
-			self.grid.attach(self.cpuPercent,4,gline,1,1)
-			gline = gline + 1
-			lram = createLabel('RAM')
-			self.ramBar = Gtk.ProgressBar()
-			self.ramPercent = createLabel()
-			self.grid.attach(lram,0,gline,1,1)
-			self.grid.attach(self.ramBar,3,gline,1,1)
-			self.grid.attach(self.ramPercent,4,gline,1,1)
-			gline = gline + 2
-			sep = Gtk.Label()
-			sep.set_size_request(-1, 20)
-			self.grid.attach(sep,0,gline,5,1)
-			gline = gline + 2
-		else:
-			gline = gline + 1
-		if not self.nofilesystems:
-			self.parts = {}
-			self.grid.attach(createLabel('Mount'),0,gline,1,1)
-			self.grid.attach(createLabel("Device"),1,gline,1,1)
-			self.grid.attach(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL),0,gline,5,1)
-			gline = gline + 1
-			for i in getPartitionInfo():
-				fso = {
-					'mountpoint': 	i['mountpoint'],
-					'device': 	i['device'],
-					'percent': 	i['usage_percent'],
-					'total':	i['total'],
-					'used':		i['used'],
-					'bar':	Gtk.ProgressBar(),
-					'usage': createLabel(f" {i['usage_percent']}%, {i['used']}/{i['total']}")
-				};
-				l1 = createLabel(i['mountpoint'])
-				l2 = createLabel(i['device'])
-				self.grid.attach(l1,0,gline,1,1)
-				self.grid.attach(l2,1,gline,2,1)
-				self.grid.attach(fso['bar'],3,gline,1,1)
-				self.grid.attach(fso['usage'],4,gline,1,1)
-				self.parts[i['mountpoint']] = fso;
+			super().__init__(title="System Information")
+			self.vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+			self.topLabel = createLabel()
+			self.vbox.pack_start(self.topLabel,True,True,0)
+			self.grid = Gtk.Grid()
+			self.vbox.pack_start(self.grid,True,True,0)
+			gline = 0
+			if not self.nosystem:
+				count = psutil.cpu_count()
+				if count > 1:
+					nr = 'cores'
+				else:
+					nr = 'core'
+				lcpu = createLabel(f"CPU ({count} {nr})")
+				self.cpuBar = Gtk.ProgressBar()
+				self.cpuPercent = createLabel()
+				self.grid.attach(lcpu,0,gline,1,1)
+				self.grid.attach(self.cpuBar,3,gline,1,1)
+				self.grid.attach(self.cpuPercent,4,gline,1,1)
 				gline = gline + 1
-
-		self.vbox.pack_start(self.grid,True,True,0)
-		if not self.nousers:
-			self.Users = Gtk.Label()
-			self.vbox.pack_start(self.Users,True,True,0)
-			self.Users.set_text(getLoggedInUsers())
-		self.add(self.vbox)
-
-		self.update()
-		GLib.timeout_add(self.interval, self.update)
-
-
-	def update(self):
-		if distroAvail:
-			dos = distro.id()
-			codename = distro.codename()
-			version = distro.major_version()
-			minor = distro.minor_version()
-			if minor:
-				version = f'{version}.{minor}'
-
-			uname = os.uname()
-			system = f'{uname[0]} {uname[2]}'
-			dinfo = f'{system} {dos} {codename} {version}'
-		else:
-			dinfo = ""
-		uptime = getUptime()
-		timestr = time.strftime('%c')
-		loadavg = []
-		for l in psutil.getloadavg():
-			loadavg.append('{:.2f}'.format(float(l)))
-		loadavg = ', '.join(loadavg)
-		pinfo = getProcessInformation(self.username)
-		usrcnt = int(pinfo['user'])
-		sleep = pinfo['sleeping']
-		run = pinfo['running']
-		pstr = f'{pinfo["count"]} procs, ({run} running, {sleep} sleeping) {pinfo["sys"]} system, {usrcnt} user'
-		topline = f'{dinfo}\n{timestr}  Up: {uptime} - Load Average {loadavg} {getCpuTemp()}\n{pstr}'
-		self.topLabel.set_text(topline)
-		if not self.nosystem:
-			cper = psutil.cpu_percent()
-			if cper <= 0:
-				cfrac = 0
+				lram = createLabel('RAM')
+				self.ramBar = Gtk.ProgressBar()
+				self.ramPercent = createLabel()
+				self.grid.attach(lram,0,gline,1,1)
+				self.grid.attach(self.ramBar,3,gline,1,1)
+				self.grid.attach(self.ramPercent,4,gline,1,1)
+				gline = gline + 2
+				sep = Gtk.Label()
+				sep.set_size_request(-1, 20)
+				self.grid.attach(sep,0,gline,5,1)
+				gline = gline + 2
 			else:
-				cfrac = cper/100
-			if cfrac > 100:
-				return True
-			cper = '{:.2f}'.format(cper)
-			self.cpuPercent.set_text(f'{cper}%')
-			self.cpuBar.set_fraction(cfrac)
+				gline = gline + 1
+			if not self.nofilesystems:
+				self.parts = {}
+				self.grid.attach(createLabel('Mount'),0,gline,1,1)
+				self.grid.attach(createLabel("Device"),1,gline,1,1)
+				self.grid.attach(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL),0,gline,5,1)
+				gline = gline + 1
+				for i in getPartitionInfo():
+					fso = {
+						'mountpoint': 	i['mountpoint'],
+						'device': 	i['device'],
+						'percent': 	i['usage_percent'],
+						'total':	i['total'],
+						'used':		i['used'],
+						'bar':	Gtk.ProgressBar(),
+						'usage': createLabel(f" {i['usage_percent']}%, {i['used']}/{i['total']}")
+					};
+					l1 = createLabel(i['mountpoint'])
+					l2 = createLabel(i['device'])
+					self.grid.attach(l1,0,gline,1,1)
+					self.grid.attach(l2,1,gline,2,1)
+					self.grid.attach(fso['bar'],3,gline,1,1)
+					self.grid.attach(fso['usage'],4,gline,1,1)
+					self.parts[i['mountpoint']] = fso;
+					gline = gline + 1
 
-			vm = psutil.virtual_memory()
-			vmtot = formatByteValue(vm.total)
-			vmav = formatByteValue(vm.available)
-			vperstr = '{:.2f}'.format(vm.percent)
-			vmper = vm.percent/100
-			vmusg = f'{vmav}/{vmtot}'
-			self.ramPercent.set_text(f'{vperstr}%, {vmusg}')
-			self.ramBar.set_fraction(vmper)
+			self.vbox.pack_start(self.grid,True,True,0)
+			if not self.nousers:
+				self.Users = Gtk.Label()
+				self.vbox.pack_start(self.Users,True,True,0)
+				self.Users.set_text(getLoggedInUsers())
+			self.add(self.vbox)
 
-		if not self.nofilesystems:
-			for i in getPartitionInfo():
-				if i['mountpoint'] in self.parts:
-					fso = self.parts[i['mountpoint']]
-					fso['usage'].set_text(f" {i['usage_percent']}%, {i['used']}/{i['total']}")
-					fso['bar'].set_fraction(i['usage_percent']/100)
+			self.update()
+			GLib.timeout_add(self.interval, self.update)
 
-		if not self.nousers:
-			self.Users.set_text(getLoggedInUsers())
 
-		return True
+		def update(self):
+			if distroAvail:
+				dos = distro.id()
+				codename = distro.codename()
+				version = distro.major_version()
+				minor = distro.minor_version()
+				if minor:
+					version = f'{version}.{minor}'
+
+				uname = os.uname()
+				system = f'{uname[0]} {uname[2]}'
+				dinfo = f'{system} {dos} {codename} {version}'
+			else:
+				dinfo = ""
+			uptime = getUptime()
+			timestr = time.strftime('%c')
+			loadavg = []
+			for l in psutil.getloadavg():
+				loadavg.append('{:.2f}'.format(float(l)))
+			loadavg = ', '.join(loadavg)
+			pinfo = getProcessInformation(self.username)
+			usrcnt = int(pinfo['user'])
+			sleep = pinfo['sleeping']
+			run = pinfo['running']
+			pstr = f'{pinfo["count"]} procs, ({run} running, {sleep} sleeping) {pinfo["sys"]} system, {usrcnt} user'
+			topline = f'{dinfo}\n{timestr}  Up: {uptime} - Load Average {loadavg} {getCpuTemp()}\n{pstr}'
+			self.topLabel.set_text(topline)
+			if not self.nosystem:
+				cper = psutil.cpu_percent()
+				if cper <= 0:
+					cfrac = 0
+				else:
+					cfrac = cper/100
+				if cfrac > 100:
+					return True
+				cper = '{:.2f}'.format(cper)
+				self.cpuPercent.set_text(f'{cper}%')
+				self.cpuBar.set_fraction(cfrac)
+
+				vm = psutil.virtual_memory()
+				vmtot = formatByteValue(vm.total)
+				vmav = formatByteValue(vm.available)
+				vperstr = '{:.2f}'.format(vm.percent)
+				vmper = vm.percent/100
+				vmusg = f'{vmav}/{vmtot}'
+				self.ramPercent.set_text(f'{vperstr}%, {vmusg}')
+				self.ramBar.set_fraction(vmper)
+
+			if not self.nofilesystems:
+				for i in getPartitionInfo():
+					if i['mountpoint'] in self.parts:
+						fso = self.parts[i['mountpoint']]
+						fso['usage'].set_text(f" {i['usage_percent']}%, {i['used']}/{i['total']}")
+						fso['bar'].set_fraction(i['usage_percent']/100)
+
+			if not self.nousers:
+				try:
+					self.Users.set_text(getLoggedInUsers())
+				except:
+					pass
+
+			return True
+
+	if args.interval <= .15:
+		istr = '{:.2f}'.format(args.interval)
+		dialog = Gtk.MessageDialog(
+			flags=0,
+			message_type=Gtk.MessageType.ERROR,
+			buttons=Gtk.ButtonsType.CLOSE,
+			text=f"The interval, {istr}, requested is to low, please use >.15",
+		)
+		dialog.run()
+		sys.exit(1)
+	win = siGtk(args.interval*1000,args.nosystem,args.nofilesystems,args.nousers)
+	win.connect("destroy", Gtk.main_quit)
+	win.show_all()
+	Gtk.main()
+
 
 def getPartitionInfo():
 	mounted_filesystems = get_mounted_filesystems()
@@ -380,20 +401,7 @@ def generate_bar_graph(percentage, width=20):
 	return bar
 
 def gtkMain(args):
-	if args.interval <= .15:
-		istr = '{:.2f}'.format(args.interval)
-		dialog = Gtk.MessageDialog(
-			flags=0,
-			message_type=Gtk.MessageType.ERROR,
-			buttons=Gtk.ButtonsType.CLOSE,
-			text=f"The interval, {istr}, requested is to low, please use >.15",
-		)
-		dialog.run()
-		sys.exit(1)
-	win = siGtk(args.interval*1000,args.nosystem,args.nofilesystems,args.nousers)
-	win.connect("destroy", Gtk.main_quit)
-	win.show_all()
-	Gtk.main()
+	GTKStuff(args)
 
 def ttyMain(args):
 	hostname = os.uname()[1]
@@ -477,8 +485,11 @@ def ttyMain(args):
 
 
 		if not args.nousers:
-			print(getLoggedInUsers())
-			print("");
+			try:
+				print(getLoggedInUsers())
+				print("");
+			except:
+				pass
 
 		if not args.watch:
 			run = False

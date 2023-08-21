@@ -3,6 +3,9 @@
 # System Information
 The sysinfo program displays cpu, ram and diskusage as well as uptime, loadaverage and cpu temperature on sysfs systems which support it. Display may be on a terminal or in a GTK application.
 
+### Compatibility
+sysinfo has been tested on macOS Catalina and macOS Ventura, Debian Bullseye and Ubuntu Server. GTK may not be available on Macintosh Systems. 
+
 ## Background
 I wanted an alternative for the *nix df command which would show diskusage using bar graphs. Once this worked I added other system information and features
 
