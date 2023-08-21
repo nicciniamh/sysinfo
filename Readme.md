@@ -46,4 +46,4 @@ licenced under GNU GENERAL PUBLIC LICENSE Version 3. See LICENSE.txt which shoul
 distributed with this program. Please see [GNU Public License v3](https://www.gnu.org/licenses/gpl-3.0.txt)
 
 # Author
-Nicole Stevens - nospam@nspam.org :) 
+Nicole Stevens - https://github.com/nicciniamh
