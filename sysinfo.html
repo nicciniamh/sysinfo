@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>sysinfo(1) | General Commands Manual</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">sysinfo(1) | General Commands Manual</h1>
+</header>
+<h1 id="system-information">System Information</h1>
+<p>The sysinfo program displays cpu, ram and diskusage as well as uptime, loadaverage and cpu temperature on sysfs systems which support it. Display may be on a terminal or in a GTK application.</p>
+<h3 id="compatibility">Compatibility</h3>
+<p>sysinfo has been tested on macOS Catalina and macOS Ventura, Debian Bullseye and Ubuntu Server. GTK may not be available on Macintosh Systems.</p>
+<h2 id="background">Background</h2>
+<p>I wanted an alternative for the *nix df command which would show diskusage using bar graphs. Once this worked I added other system information and features</p>
+<h3 id="program-arguments">Program Arguments</h3>
+<pre><code>--gtk               Use GUI
+--nosystem          Don&#39;t show system information
+--nofilesystems     Don&#39;t show filesystem usage
+--nousers           Don&#39;t display logged in users.
+--termwidth         An integer representing number of terminal columns
+--watch, -w         Clear screen and refresh every watch-interval
+--interval, -i      Seconds to wait between refresh &gt;.15 seconds.</code></pre>
+<h2 id="installation">Installation</h2>
+<p>To install perform these actions:</p>
+<pre><code>cp sysinfo ~/bin
+cp sysinfo.1 /usr/local/man/man1 # Optional</code></pre>
+<p>For the Desktop files:</p>
+<pre><code>desktop-file-install --dir=~/.local/share/applications sysinfo.desktop
+desktop-file-install --dir=~/.local/share/applications sysinfo-gtk.desktop
+update-desktop-database ~/.local/share/applications</code></pre>
+<h1 id="license">License</h1>
+<p>Sysinfo Copyright (C) 2023 Nicole Stevens. This program comes with ABSOLUTELY NO WARRANTY. This is free software, and you are welcome to redistribute it under certain conditions. This program is licenced under GNU GENERAL PUBLIC LICENSE Version 3. See LICENSE.txt which should have been distributed with this program. Please see <a href="https://www.gnu.org/licenses/gpl-3.0.txt">GNU Public License v3</a></p>
+<h1 id="author">Author</h1>
+<p>Nicole Stevens - https://github.com/nicciniamh</p>
+</body>
+</html>
