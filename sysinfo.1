@@ -32,13 +32,22 @@ Once this worked I added other system information and features
 .fi
 .SS Installation
 .PP
-To install, simple copy files:
+To install perform these actions:
 .IP
 .nf
 \f[C]
-cp sysinfo /usr/local/bin
-cp sysinfo.1 /usr/local/man/man1
-cp sysinfo.desktop /usr/share/applications -or- cp sysinfo.desktop \[ti]/.local/share/applications
+cp sysinfo \[ti]/bin
+cp sysinfo.1 /usr/local/man/man1 # Optional
+\f[R]
+.fi
+.PP
+For the Desktop files:
+.IP
+.nf
+\f[C]
+desktop-file-install --dir=\[ti]/.local/share/applications sysinfo.desktop
+desktop-file-install --dir=\[ti]/.local/share/applications sysinfo-gtk.desktop
+update-desktop-database \[ti]/.local/share/applications
 \f[R]
 .fi
 .SH License
@@ -53,4 +62,4 @@ Please see GNU Public License
 v3 (https://www.gnu.org/licenses/gpl-3.0.txt)
 .SH Author
 .PP
-Nicole Stevens - nospam\[at]nspam.org :)
+Nicole Stevens - https://github.com/nicciniamh
