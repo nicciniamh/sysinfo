@@ -1,9 +1,9 @@
 #!/usr/bin/env xdg-open
 [Desktop Entry]
-Name=CPU and Disk Information (Terminal)
+Name=CPU and Disk Information
 GenericName=sysinfo
 Comment=System Information
-Exec=sysinfo -w
+Exec=sysinfo -gtk -i 1
 Icon=utilities-system-monitor
 Terminal=true
 Type=Application

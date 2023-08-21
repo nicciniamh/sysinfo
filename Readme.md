@@ -23,12 +23,19 @@ I wanted an alternative for the *nix df command which would show diskusage using
 
 ## Installation
 
-To install, simple copy files:
+To install perform these actions:
 
 ```
-cp sysinfo /usr/local/bin
-cp sysinfo.1 /usr/local/man/man1
-cp sysinfo.desktop /usr/share/applications -or- cp sysinfo.desktop ~/.local/share/applications
+cp sysinfo ~/bin
+cp sysinfo.1 /usr/local/man/man1 # Optional
+```
+
+For the Desktop files: 
+
+```
+desktop-file-install --dir=~/.local/share/applications sysinfo.desktop
+desktop-file-install --dir=~/.local/share/applications sysinfo-gtk.desktop
+update-desktop-database ~/.local/share/applications
 ```
 
 
