@@ -3,9 +3,9 @@
 Name=CPU and Disk Information
 GenericName=sysinfo
 Comment=System Information
-Exec=sysinfo -gtk -i 1
+Exec=sysinfo --gtk -i 1
 Icon=utilities-system-monitor
-Terminal=False
+Terminal=false
 Type=Application
 StartupNotify=true
 Categories=System;Monitor
