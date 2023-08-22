@@ -14,6 +14,7 @@ import argparse
 import time 
 import datetime
 import psutil
+import _thread
 from datetime import timedelta
 try:
 	import distro
@@ -21,6 +22,27 @@ try:
 except:
 	distroAvail = False
 
+bytes_in, bytes_out, spd_in, spd_out = [0,0,0,0]
+
+def gatherNetstats():
+	global bytes_in
+	global bytes_out
+	global spd_in
+	global spd_out
+	n = psutil.net_io_counters();
+	bytes_in = n.bytes_recv
+	bytes_out = n.bytes_sent	
+	_bin = bytes_in
+	_bout = bytes_out
+	while True:
+		n = psutil.net_io_counters();
+		spd_in = n.bytes_recv-_bin;
+		spd_out = n.bytes_recv-_bin;
+		_bin = n.bytes_recv
+		_bout = n.bytes_sent
+		bytes_in = _bin
+		bytes_out = _bout
+		time.sleep(1)
 
 def GTKStuff(args):
 	import gi
@@ -43,7 +65,10 @@ def GTKStuff(args):
 				label.set_halign(Gtk.Align.START)
 				return label
 
-			super().__init__(title="System Information")
+			hostname = os.uname()[1]
+			self.title = f"System Information - {hostname}"
+
+			super().__init__(title=self.title)
 			self.vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
 			self.topLabel = createLabel()
 			self.vbox.pack_start(self.topLabel,True,True,0)
@@ -119,6 +144,8 @@ def GTKStuff(args):
 
 
 		def update(self):
+			global spd_in
+			global spd_out
 			if distroAvail:
 				dos = distro.id()
 				codename = distro.codename()
@@ -143,7 +170,10 @@ def GTKStuff(args):
 			sleep = pinfo['sleeping']
 			run = pinfo['running']
 			pstr = f'{pinfo["count"]} procs, ({run} running, {sleep} sleeping) {pinfo["sys"]} system, {usrcnt} user'
-			topline = f'{dinfo}\n{timestr}  Up: {uptime} - Load Average {loadavg} {getCpuTemp()}\n{pstr}'
+			ssin = formatByteValue(spd_in)
+			ssout = formatByteValue(spd_out)
+			ns = f'↓{ssin} ↑{ssout}'
+			topline = f'{dinfo}\n{timestr}  Up: {uptime} - Load Average {loadavg} {getCpuTemp()} {ns}\n{pstr}'
 			self.topLabel.set_text(topline)
 			if not self.nosystem:
 				p = psutil.cpu_percent(percpu=True)
@@ -340,8 +370,8 @@ def get_mounted_filesystems(parry=None):
 		except:
 			continue;
 		try:
-			if not parry and '/home' in partition.mountpoint:
-				continue
+			#if not parry: #and '/home' in partition.mountpoint:
+			#	continue
 			filesystem_info = {
 				'mountpoint': partition.mountpoint,
 				'device': partition.device,
@@ -412,6 +442,8 @@ def gtkMain(args):
 	GTKStuff(args)
 
 def ttyMain(args):
+	global spd_in
+	global spd_out
 	hostname = os.uname()[1]
 	title = f"System Information - {hostname}"
 	try:
@@ -461,13 +493,19 @@ def ttyMain(args):
 		vmbar = generate_bar_graph(vm.percent,barlen)
 		vmusg = f'{vmav}/{vmtot}'
 		if not args.nosystem:
+			if args.watch:
+				ssin = formatByteValue(spd_in)
+				ssout = formatByteValue(spd_out)
+				ns = f'↓{ssin} ↑{ssout}'
+			else:
+				ns = ""
 			timestr = time.strftime('%c')
 			loadavg = []
 			for l in psutil.getloadavg():
 				loadavg.append('{:.2f}'.format(float(l)))
 			jlen = mplen+dvlen+1
 			print(title)
-			print(f'{timestr}  Up: {uptime} - Load Average ',*loadavg,getCpuTemp())
+			print(f'{timestr}  Up: {uptime} - Load Average ',*loadavg,getCpuTemp(),ns)
 			p = psutil.cpu_percent(percpu=True)
 			for i in range(0,psutil.cpu_count()):
 				cperc = p[i]
@@ -518,6 +556,8 @@ def main():
 	parser.add_argument('-i','--interval',type=float,default=1,metavar="seconds",help="Set watch interval, default is 1")
 	parser.add_argument('paths', nargs='*', help='Optional list of paths to check.')
 	args = parser.parse_args()
+	if args.watch or args.gtk:
+		_thread.start_new_thread(gatherNetstats,())
 	if args.gtk:
 		gtkMain(args)
 	else:
