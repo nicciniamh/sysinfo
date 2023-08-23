@@ -13,11 +13,6 @@ CPU percentages are graphed, per core.
 sysinfo has been tested on macOS Catalina and macOS Ventura, Debian
 Bullseye and Ubuntu Server.
 GTK may not be available on Macintosh Systems.
-.SS Background
-.PP
-I wanted an alternative for the *nix df command which would show
-diskusage using bar graphs.
-Once this worked I added other system information and features
 .SS Program Arguments
 .IP
 .nf
@@ -51,6 +46,23 @@ desktop-file-install --dir=\[ti]/.local/share/applications sysinfo-gtk.desktop
 update-desktop-database \[ti]/.local/share/applications
 \f[R]
 .fi
+.SS Background
+.PP
+I wanted an alternative for the *nix df command which would show
+diskusage using bar graphs.
+Once this worked I added other system information and features
+.SS Technicals
+.PP
+sysinfo is written in Python and relies heavily on the psutil module.
+Originally written for a terminal app, it made sense to add a Gtk
+interface.
+.IP \[bu] 2
+Gtk code should only get executed when the \[en]gtk flag is used.
+This is to prevent an exception on systems without Gtk.
+.IP \[bu] 2
+To calculate the network speeds a thread is created which calculates the
+difference in total bytes sent/received.
+This is done every second so we can determine bytes per second.
 .SH License
 .PP
 Sysinfo Copyright (C) 2023 Nicole Stevens.
