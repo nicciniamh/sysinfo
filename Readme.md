@@ -27,12 +27,14 @@ seconds (set with -i or --interval). Unless --notitle is set, the terminal title
 
 To install perform these actions:
 
-```
-cp sysinfo ~/bin
-cp sysinfo.1 /usr/local/man/man1 # Optional
-```
+`cp sysinfo ~/bin # or any folder on your PATH`
 
-For the Desktop files: 
+To install the manual page:
+
+`cp sysinfo.1 /usr/local/man/man1 # Optional, this can be any path on MANPATH`
+
+
+For the Desktop files, if running in a linux/unix-like environment that supports Opendesktop standards, suchs as Gnome, Mate, Cinnamon, LXDE, KDE, etc.:
 
 ```
 desktop-file-install --dir=~/.local/share/applications sysinfo.desktop
@@ -40,10 +42,8 @@ desktop-file-install --dir=~/.local/share/applications sysinfo-gtk.desktop
 update-desktop-database ~/.local/share/applications
 ```
 
-
 ## Background
-I wanted an alternative for the *nix df command which would show diskusage using bar graphs. Once this worked I added other system information and features
-
+Since there are a variety of tools that produce similar results, why another one? Initially, I wanted an alternative for the *nix df command which would show diskusage using bar graphs. Once this worked, I looked for other information to add, then added the GTK interface, then the curses code to exit more gracefully from the terminal watch mode.
 
 ## Technicals
 sysinfo is written in Python and relies heavily on the psutil module. Originally written for a terminal app, it made sense to add a  Gtk interface.

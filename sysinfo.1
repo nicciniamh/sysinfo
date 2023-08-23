@@ -38,15 +38,16 @@ To exit, press Escape, Q or q.
 .SS Installation
 .PP
 To install perform these actions:
-.IP
-.nf
-\f[C]
-cp sysinfo \[ti]/bin
-cp sysinfo.1 /usr/local/man/man1 # Optional
-\f[R]
-.fi
 .PP
-For the Desktop files:
+\f[C]cp sysinfo \[ti]/bin # or any folder on your PATH\f[R]
+.PP
+To install the manual page:
+.PP
+\f[C]cp sysinfo.1 /usr/local/man/man1 # Optional, this can be any path on MANPATH\f[R]
+.PP
+For the Desktop files, if running in a linux/unix-like environment that
+supports Opendesktop standards, suchs as Gnome, Mate, Cinnamon, LXDE,
+KDE, etc.:
 .IP
 .nf
 \f[C]
@@ -57,9 +58,13 @@ update-desktop-database \[ti]/.local/share/applications
 .fi
 .SS Background
 .PP
-I wanted an alternative for the *nix df command which would show
-diskusage using bar graphs.
-Once this worked I added other system information and features
+Since there are a variety of tools that produce similar results, why
+another one?
+Initially, I wanted an alternative for the *nix df command which would
+show diskusage using bar graphs.
+Once this worked, I looked for other information to add, then added the
+GTK interface, then the curses code to exit more gracefully from the
+terminal watch mode.
 .SS Technicals
 .PP
 sysinfo is written in Python and relies heavily on the psutil module.
