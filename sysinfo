@@ -39,7 +39,7 @@ def gatherNetstats():
 	while True:
 		n = psutil.net_io_counters();
 		spd_in = n.bytes_recv-_bin;
-		spd_out = n.bytes_recv-_bin;
+		spd_out = n.bytes_sent-_bout;
 		_bin = n.bytes_recv
 		_bout = n.bytes_sent
 		bytes_in = _bin
