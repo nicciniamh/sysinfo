@@ -15,6 +15,7 @@ import time
 import datetime
 import psutil
 import _thread
+import curses
 from datetime import timedelta
 try:
 	import distro
@@ -23,6 +24,7 @@ except:
 	distroAvail = False
 
 bytes_in, bytes_out, spd_in, spd_out = [0,0,0,0]
+stdscr = None
 
 def gatherNetstats():
 	global bytes_in
@@ -257,7 +259,7 @@ def getLoggedInUsers():
 		]
 		usrstrs.append(' '.join(usts))
 
-	return '\n'.join(usrstrs)
+	return '\r\n'.join(usrstrs)
 
 def getCpuTemp():
 	'''
@@ -441,11 +443,35 @@ def generate_bar_graph(percentage, width=20):
 def gtkMain(args):
 	GTKStuff(args)
 
+row = 0
+def cprint(*args):
+	global stdscr
+
+	stdscr.addstr(row,*args,end="\r\n")
+	row = row + 1;
+
+def tprint(*args):
+	print(*args,end='\r\n')
+
+def clear():
+	if stdscr:
+		stdscr.clear()
+		stdscr.move(0, 0)
+		row = 0
+	else:
+		sys.stdout.write('\033[2J\033[1;1H')
+
 def ttyMain(args):
 	global spd_in
 	global spd_out
+	global stdscr
 	hostname = os.uname()[1]
 	title = f"System Information - {hostname}"
+	if args.watch:
+		if not args.notitle:
+			print(f"\033]0;{title}\007",end="")
+		stdscr = curses.initscr()
+		stdscr.nodelay(1)
 	try:
 		termwidth = os.get_terminal_size().columns
 	except:
@@ -480,9 +506,14 @@ def ttyMain(args):
 
 	while run:
 		if args.watch:
-			print("\033[H\033[J", end="")		
-			print(f"\033]0;{title}\007",end="")
-
+			c = stdscr.getch()
+			if c != -1:
+				if  c == 27 or c == 113 or c == 81: # esc, q or Q
+					curses.echo()
+					curses.nocbreak()
+					curses.endwin()
+					sys.exit(0)
+			clear()
 		vm = psutil.virtual_memory()
 		uptime = getUptime()
 		vmtot = formatByteValue(vm.total)
@@ -504,38 +535,38 @@ def ttyMain(args):
 			for l in psutil.getloadavg():
 				loadavg.append('{:.2f}'.format(float(l)))
 			jlen = mplen+dvlen+1
-			print(title)
-			print(f'{timestr}  Up: {uptime} - Load Average ',*loadavg,getCpuTemp(),ns)
+			tprint(title)
+			tprint(f'{timestr}  Up: {uptime} - Load Average ',*loadavg,getCpuTemp(),ns)
 			p = psutil.cpu_percent(percpu=True)
 			for i in range(0,psutil.cpu_count()):
 				cperc = p[i]
 				cpubar = generate_bar_graph(cperc,barlen)
-				print(f'Core {i}'.ljust(jlen),f'{cpubar} {cperc}%')
-			print('RAM'.ljust(jlen),f'{vmbar} {vm.percent}%, {vmusg}')
-			print("");
+				tprint(f'Core {i}'.ljust(jlen),f'{cpubar} {cperc}%')
+			tprint('RAM'.ljust(jlen),f'{vmbar} {vm.percent}%, {vmusg}')
+			tprint("");
 
 		if not args.nofilesystems:
 			mpdash = '-'*mplen
 			devdash = '-'*dvlen
 			bardash = '-'*barlen
-			print("File systems")
-			print(f"{'Mount'.ljust(mplen)} {'Dev'.ljust(dvlen)}  Usage");
-			print(f'{mpdash} {devdash} {bardash}')
+			tprint("File systems")
+			tprint(f"{'Mount'.ljust(mplen)} {'Dev'.ljust(dvlen)}  Usage");
+			tprint(f'{mpdash} {devdash} {bardash}')
 			for fs in info:
 				p = fs['usage_percent']
 				mp = fs["mountpoint"].ljust(mplen)
 				dev = fs["device"].ljust(dvlen)
 				if(barlen < 10):
-					print('Screen too small',file=sys.stderr)
+					tprint('Screen too small',file=sys.stderr)
 					sys.exit(1)
 				bar = generate_bar_graph(p,barlen)
-				print(f"{mp} {dev} {bar} {p}% {fs['used']}/{fs['total']}")
-			print("");
+				tprint(f"{mp} {dev} {bar} {p}% {fs['used']}/{fs['total']}")
+			tprint("");
 
 
 		if not args.nousers:
 			try:
-				print(getLoggedInUsers())
+				tprint(getLoggedInUsers())
 				print("");
 			except:
 				pass
@@ -548,8 +579,9 @@ def ttyMain(args):
 def main():
 	parser = argparse.ArgumentParser(description=progDsc,epilog=progEpi)
 	parser.add_argument('--gtk',action='store_true', default=False, help='Use GTK interface')
-	parser.add_argument('--nosystem',action="store_true", default=False,help='Don\'t show system information')
 	parser.add_argument('--nofilesystems',action="store_true", default=False, help="Don\'t show disk usage")
+	parser.add_argument('--nosystem',action="store_true", default=False,help='Don\'t show system information')
+	parser.add_argument('--notitle',action='store_true',default=False,help="Don't set terminal title")
 	parser.add_argument('--nousers',action="store_true", default=False, help="Don\'t show logged in users")
 	parser.add_argument('--termwidth',type=int, default=-1, metavar="number",help="set terminal size and override terminal check")
 	parser.add_argument('-w','--watch',action='store_true',default=False,help='Watch mode')
@@ -561,7 +593,18 @@ def main():
 	if args.gtk:
 		gtkMain(args)
 	else:
-		ttyMain(args)
+		if args.watch:
+			try:
+				ttyMain(args)
+			except Exception as e:
+					curses.echo()
+					curses.nocbreak()
+					curses.endwin()
+					print(f"Exception {e} encountered")
+					sys.exit(1)
+		else:
+			ttyMain(args)
+
 
 if __name__ == "__main__":
 	main()

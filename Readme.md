@@ -10,13 +10,18 @@ sysinfo has been tested on macOS Catalina and macOS Ventura, Debian Bullseye and
 ### Program Arguments
 ```
 --gtk				Use GUI
---nosystem			Don't show system information
 --nofilesystems		Don't show filesystem usage
+--nosystem			Don't show system information
+--notitle			Don't set a title on the terminal
 --nousers			Don't display logged in users.
 --termwidth			An integer representing number of terminal columns
 --watch, -w			Clear screen and refresh every watch-interval
 --interval, -i 		Seconds to wait between refresh >.15 seconds.
 ```
+
+### Terminal Watch Mode
+When the option --watch or -w is used, sysinfo clears the screen, and updates the information every interval
+seconds (set with -i or --interval). Unless --notitle is set, the terminal title is updated showing the program name and hostname. To exit, press Escape, Q or q. 
 
 ## Installation
 
@@ -45,6 +50,7 @@ sysinfo is written in Python and relies heavily on the psutil module. Originally
 
 * Gtk code should only get executed when the --gtk flag is used. This is to prevent an exception on systems without Gtk. 
 * To calculate the network speeds a thread is created which calculates the difference in total bytes sent/received. This is done every second so we can determine bytes per second. 
+* curses is used in terminal watch mode. This is to allow receiving the terminal quit codes (esc, q or Q) to end the program.
 
 
 # License

@@ -24,12 +24,15 @@
 <p>sysinfo has been tested on macOS Catalina and macOS Ventura, Debian Bullseye and Ubuntu Server. GTK may not be available on Macintosh Systems.</p>
 <h3 id="program-arguments">Program Arguments</h3>
 <pre><code>--gtk               Use GUI
---nosystem          Don&#39;t show system information
 --nofilesystems     Don&#39;t show filesystem usage
+--nosystem          Don&#39;t show system information
+--notitle           Don&#39;t set a title on the terminal
 --nousers           Don&#39;t display logged in users.
 --termwidth         An integer representing number of terminal columns
 --watch, -w         Clear screen and refresh every watch-interval
 --interval, -i      Seconds to wait between refresh &gt;.15 seconds.</code></pre>
+<h3 id="terminal-watch-mode">Terminal Watch Mode</h3>
+<p>When the option –watch or -w is used, sysinfo clears the screen, and updates the information every interval seconds (set with -i or –interval). Unless –notitle is set, the terminal title is updated showing the program name and hostname. To exit, press Escape, Q or q.</p>
 <h2 id="installation">Installation</h2>
 <p>To install perform these actions:</p>
 <pre><code>cp sysinfo ~/bin
@@ -45,6 +48,7 @@ update-desktop-database ~/.local/share/applications</code></pre>
 <ul>
 <li>Gtk code should only get executed when the –gtk flag is used. This is to prevent an exception on systems without Gtk.</li>
 <li>To calculate the network speeds a thread is created which calculates the difference in total bytes sent/received. This is done every second so we can determine bytes per second.</li>
+<li>curses is used in terminal watch mode. This is to allow receiving the terminal quit codes (esc, q or Q) to end the program.</li>
 </ul>
 <h1 id="license">License</h1>
 <p>Sysinfo Copyright (C) 2023 Nicole Stevens. This program comes with ABSOLUTELY NO WARRANTY. This is free software, and you are welcome to redistribute it under certain conditions. This program is licenced under GNU GENERAL PUBLIC LICENSE Version 3. See LICENSE.txt which should have been distributed with this program. Please see <a href="https://www.gnu.org/licenses/gpl-3.0.txt">GNU Public License v3</a></p>
