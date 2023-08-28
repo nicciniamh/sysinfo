@@ -26,6 +26,25 @@ except:
 bytes_in, bytes_out, spd_in, spd_out = [0,0,0,0]
 stdscr = None
 
+color_enabled = True
+
+BLACK= 0
+RED= 1
+GREEN= 2
+YELLOW= 3
+BLUE= 4
+MAGENTA= 5
+CYAN= 6
+WHITE= 7
+
+def color(s,fore,back=BLACK,bold=0):
+	''' color a string with ansi colors '''
+	global color_enabled
+	if color_enabled:
+			cstr = f'[{bold};3{fore};4{back}m'
+			return f'\x1b{cstr}{s}\x1b[0m'
+	else:
+		return s
 def gatherNetstats():
 	global bytes_in
 	global bytes_out
@@ -239,7 +258,6 @@ def getPartitionInfo():
 			parts.append(fs)
 	return parts
 
-
 def getLoggedInUsers():
 	users = psutil.users();
 	legends = [
@@ -365,7 +383,7 @@ def get_mounted_filesystems(parry=None):
 		partitions = listTosdiskparts(parry)
 	else:
 		partitions = psutil.disk_partitions(all=True)
-	
+
 	for partition in partitions:
 		try:
 			usage = psutil.disk_usage(partition.mountpoint)
@@ -384,12 +402,12 @@ def get_mounted_filesystems(parry=None):
 			mounted_filesystems.append(filesystem_info)
 		except:
 			pass
-	
+
 	return mounted_filesystems
 
 def getProcessInformation(username):
 	'''
-	Return process information. 
+	Return process information.
 	'''
 	procs = {p.pid: p.info for p in psutil.process_iter(['name', 'username', 'status'])}
 	total = len(procs)
@@ -434,10 +452,18 @@ def generate_bar_graph(percentage, width=20):
 	'''
 	generate a bar graph for a percentage width wide 
 	'''
+	if percentage <= 30:
+		fore = GREEN
+	elif percentage <= 75:
+		fore = YELLOW
+	else:
+		fore = RED
 	filled_blocks = int((percentage / 100) * width)
 	empty_blocks = width - filled_blocks
+	empty = ' '*empty_blocks
 
-	bar = '[' + '#' * filled_blocks + ' ' * empty_blocks + ']'
+	fill = color('#'*filled_blocks,fore,BLACK,1)
+	bar = f'[{fill}{empty}]'
 	return bar
 
 def gtkMain(args):
@@ -491,7 +517,7 @@ def ttyMain(args):
 	info = []
 	mplen = 0
 	dvlen = 0
-	tlen = 0 
+	tlen = 0
 	ulen = 0
 	run=True
 	for fs in mounted_filesystems:
@@ -535,14 +561,18 @@ def ttyMain(args):
 			for l in psutil.getloadavg():
 				loadavg.append('{:.2f}'.format(float(l)))
 			jlen = mplen+dvlen+1
-			tprint(title)
-			tprint(f'{timestr}  Up: {uptime} - Load Average ',*loadavg,getCpuTemp(),ns)
+			title = title + ' '*(termwidth-len(title))
+			colortitle = color(title,WHITE,BLUE,1)
+			tprint(colortitle);
+			loadavg = ' '.join(loadavg)
+			tprint(color(f'{timestr}  Up: {uptime} - Load Average {loadavg} {ns}\033[K',WHITE,BLUE,1))
 			p = psutil.cpu_percent(percpu=True)
 			for i in range(0,psutil.cpu_count()):
 				cperc = p[i]
 				cpubar = generate_bar_graph(cperc,barlen)
 				tprint(f'Core {i}'.ljust(jlen),f'{cpubar} {cperc}%')
-			tprint('RAM'.ljust(jlen),f'{vmbar} {vm.percent}%, {vmusg}')
+			ram = 'RAM'.ljust(jlen)
+			tprint(f'{ram} {vmbar} {vm.percent}%, {vmusg}')
 			tprint("");
 
 		if not args.nofilesystems:
@@ -577,8 +607,10 @@ def ttyMain(args):
 			time.sleep(args.interval)
 
 def main():
+	global color_enabled
 	parser = argparse.ArgumentParser(description=progDsc,epilog=progEpi)
 	parser.add_argument('--gtk',action='store_true', default=False, help='Use GTK interface')
+	parser.add_argument('--nocolor',action="store_true", default=False, help="Don\'t use color")
 	parser.add_argument('--nofilesystems',action="store_true", default=False, help="Don\'t show disk usage")
 	parser.add_argument('--nosystem',action="store_true", default=False,help='Don\'t show system information')
 	parser.add_argument('--notitle',action='store_true',default=False,help="Don't set terminal title")
@@ -588,6 +620,8 @@ def main():
 	parser.add_argument('-i','--interval',type=float,default=1,metavar="seconds",help="Set watch interval, default is 1")
 	parser.add_argument('paths', nargs='*', help='Optional list of paths to check.')
 	args = parser.parse_args()
+	if args.nocolor:
+		color_enabled = False
 	if args.watch or args.gtk:
 		_thread.start_new_thread(gatherNetstats,())
 	if args.gtk:

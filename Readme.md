@@ -15,6 +15,7 @@ sysinfo has been tested on macOS Catalina and macOS Ventura, Debian Bullseye and
 ### Program Arguments
 ```
 --gtk				Use GUI
+--nocolor			Don't use color in terminal
 --nofilesystems		Don't show filesystem usage
 --nosystem			Don't show system information
 --notitle			Don't set a title on the terminal
